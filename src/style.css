@@ -91,3 +91,18 @@ h1 {
 .task-actions .complete-btn:hover {
     background-color: #0056b3;
 }
+
+.ai-btn {
+    background: linear-gradient(to right, #8a2be2, #ffa500); /* Purple to Orange */
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.ai-btn:hover {
+    opacity: 0.9; /* Slightly dim on hover */
+}

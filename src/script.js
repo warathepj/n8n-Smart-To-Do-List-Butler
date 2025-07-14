@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
             listItem.innerHTML = `
                 <span>${task.text}</span>
                 <div class="task-actions">
+                    <button class="ai-btn" data-index="${index}">AI</button>
+
                     <button class="complete-btn" data-index="${index}">${task.completed ? 'Undo' : 'Complete'}</button>
                     <button class="delete-btn" data-index="${index}">Delete</button>
                 </div>
@@ -62,6 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.target.classList.contains('delete-btn')) {
             const index = e.target.dataset.index;
             deleteTask(index);
+        } else if (e.target.classList.contains('ai-btn')) {
+            alert('AI');
         }
     });
 
