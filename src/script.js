@@ -65,7 +65,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const index = e.target.dataset.index;
             deleteTask(index);
         } else if (e.target.classList.contains('ai-btn')) {
-            alert('AI');
+            const index = e.target.dataset.index;
+            const task = tasks[index]; // Get the task object
+
+            fetch('/api/ai-task', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(task),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Server response:', data);
+                alert('Task data sent to AI!'); // Provide user feedback
+            })
+            .catch(error => {
+                console.error('Error sending task data:', error);
+                alert('Failed to send task data to AI.'); // Provide user feedback
+            });
         }
     });
 
