@@ -5,6 +5,9 @@ const NodeFetch = require('node-fetch'); // Import node-fetch
 const app = express();
 const port = 3000;
 
+// Store connected clients for SSE
+let clients = [];
+
 app.use(express.json()); // Middleware to parse JSON bodies
 
 // Serve static files from the 'src' directory
@@ -49,9 +52,28 @@ app.post('/api/ai-task', async (req, res) => {
 app.post('/api/webhook-response', (req, res) => {
     const webhookResponseData = req.body;
     console.log('Received webhook response data:', webhookResponseData);
-    // You can add further logic here to process the webhook response,
-    // e.g., save to a database, update frontend, etc.
+
+    // Send webhook response to all connected SSE clients
+    clients.forEach(client => client.write(`data: ${JSON.stringify(webhookResponseData)}\n\n`));
+
     res.status(200).json({ message: 'Webhook response received successfully!' });
+});
+
+// New endpoint for Server-Sent Events
+app.get('/events', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*'); // Allow all origins for simplicity
+
+    clients.push(res);
+
+    req.on('close', () => {
+        clients = clients.filter(client => client !== res);
+        console.log('Client disconnected from SSE.');
+    });
+
+    console.log('New client connected to SSE.');
 });
 
 app.listen(port, () => {

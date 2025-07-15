@@ -2,6 +2,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const taskInput = document.getElementById('taskInput');
     const addTaskBtn = document.getElementById('addTaskBtn');
     const taskList = document.getElementById('taskList');
+    const webhookResponsePopup = document.getElementById('webhookResponsePopup');
+    const popupMessage = document.getElementById('popupMessage');
+    const closePopupBtn = document.querySelector('.popup .close-btn');
 
     let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
 
@@ -88,4 +91,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     renderTasks();
+
+    // Server-Sent Events (SSE)
+    const eventSource = new EventSource('/events');
+
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        console.log('Received SSE message:', data);
+        popupMessage.textContent = JSON.stringify(data, null, 2); // Display formatted JSON
+        webhookResponsePopup.style.display = 'flex'; // Show the popup
+
+        // Automatically hide the popup after 5 seconds
+        setTimeout(() => {
+            webhookResponsePopup.style.display = 'none';
+        }, 5000);
+    };
+
+    eventSource.onerror = function(err) {
+        console.error('EventSource failed:', err);
+        eventSource.close();
+    };
+
+    // Close popup when close button is clicked
+    closePopupBtn.addEventListener('click', () => {
+        webhookResponsePopup.style.display = 'none';
+    });
+
+    // Close popup when clicking outside of the popup content
+    window.addEventListener('click', (event) => {
+        if (event.target === webhookResponsePopup) {
+            webhookResponsePopup.style.display = 'none';
+        }
+    });
 });
