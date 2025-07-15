@@ -45,6 +45,15 @@ app.post('/api/ai-task', async (req, res) => {
     }
 });
 
+// New endpoint to receive webhook responses
+app.post('/api/webhook-response', (req, res) => {
+    const webhookResponseData = req.body;
+    console.log('Received webhook response data:', webhookResponseData);
+    // You can add further logic here to process the webhook response,
+    // e.g., save to a database, update frontend, etc.
+    res.status(200).json({ message: 'Webhook response received successfully!' });
+});
+
 app.listen(port, () => {
     console.log(`Server listening at http://localhost:${port}`);
 });
