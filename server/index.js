@@ -35,8 +35,9 @@ app.post('/api/ai-task', async (req, res) => {
         });
 
         if (response.ok) {
-            console.log('Task data forwarded to webhook successfully!');
-            res.status(200).json({ message: 'Task data received and forwarded successfully!' });
+            const responseData = await response.json(); // Assuming the webhook response is JSON
+            console.log('Task data forwarded to webhook successfully! Webhook response:', responseData);
+            res.status(200).json({ message: 'Task data received and forwarded successfully!', webhookResponse: responseData });
         } else {
             const errorText = await response.text();
             console.error('Failed to forward task data to webhook:', response.status, errorText);

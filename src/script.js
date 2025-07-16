@@ -33,7 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function addTask() {
         const taskText = taskInput.value.trim();
         if (taskText !== '') {
-            tasks.push({ text: taskText, completed: false });
+            const taskId = Date.now().toString(); // Generate a unique ID
+            tasks.push({ id: taskId, text: taskText, completed: false });
             taskInput.value = '';
             saveTasks();
             renderTasks();

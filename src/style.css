@@ -118,7 +118,6 @@ h1 {
     height: 100%; /* Full height */
     overflow: auto; /* Enable scroll if needed */
     background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-    display: flex;
     justify-content: center;
     align-items: center;
 }
