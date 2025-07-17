@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
             listItem.className = task.completed ? 'completed' : '';
             listItem.innerHTML = `
                 <span>${task.text}</span>
+                <pre>${task.id}</pre>
                 <div class="task-actions">
                     <button class="ai-btn" data-index="${index}">AI</button>
 
@@ -83,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 console.log('Server response:', data);
                 alert('Task data sent to AI!'); // Provide user feedback
+                window.location.href = `/task.html?id=${task.id}`; // Navigate to new page
             })
             .catch(error => {
                 console.error('Error sending task data:', error);
