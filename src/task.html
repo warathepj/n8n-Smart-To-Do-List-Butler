@@ -52,6 +52,8 @@
     <div class="container">
         <h1>Task Details</h1>
         <p>Task ID: <span id="taskIdDisplay"></span></p>
+        <h2>Webhook Response:</h2>
+        <pre id="webhookResponseDisplay"></pre>
         <a href="index.html" class="back-button">Back to To-Do List</a>
     </div>
 
@@ -60,12 +62,35 @@
             const urlParams = new URLSearchParams(window.location.search);
             const taskId = urlParams.get('id');
             const taskIdDisplay = document.getElementById('taskIdDisplay');
+            const webhookResponseDisplay = document.getElementById('webhookResponseDisplay');
 
             if (taskId) {
                 taskIdDisplay.textContent = taskId;
             } else {
                 taskIdDisplay.textContent = 'No Task ID found.';
             }
+
+            // Server-Sent Events (SSE)
+            const eventSource = new EventSource('/events');
+
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                console.log('Received SSE message in task.html:', data); // Log the full data object
+
+                // Check if the received data has a task ID and if it matches the current page's task ID
+                // Assuming the task ID might be nested under 'originalTask' or similar, based on common webhook patterns
+                // We will refine this after inspecting the console log.
+                if (data.id && data.id === taskId) {
+                    webhookResponseDisplay.textContent = JSON.stringify(data, null, 2); // Display formatted JSON
+                } else if (data.originalTask && data.originalTask.id && data.originalTask.id === taskId) {
+                    webhookResponseDisplay.textContent = JSON.stringify(data, null, 2); // Display formatted JSON
+                }
+            };
+
+            eventSource.onerror = function(err) {
+                console.error('EventSource failed:', err);
+                eventSource.close();
+            };
         });
     </script>
 </body>
