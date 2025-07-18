@@ -53,9 +53,27 @@
         <h1>Task Details</h1>
         <p>Task ID: <span id="taskIdDisplay"></span></p>
         <h2>Webhook Response:</h2>
-        <pre id="webhookResponseDisplay"></pre>
+        <div id="loader" class="loader"></div>
+        <pre id="webhookResponseDisplay" style="display: none;"></pre>
         <a href="index.html" class="back-button">Back to To-Do List</a>
     </div>
+
+    <style>
+        .loader {
+            border: 8px solid #f3f3f3; /* Light grey */
+            border-top: 8px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -63,6 +81,7 @@
             const taskId = urlParams.get('id');
             const taskIdDisplay = document.getElementById('taskIdDisplay');
             const webhookResponseDisplay = document.getElementById('webhookResponseDisplay');
+            const loader = document.getElementById('loader');
 
             if (taskId) {
                 taskIdDisplay.textContent = taskId;
@@ -70,26 +89,71 @@
                 taskIdDisplay.textContent = 'No Task ID found.';
             }
 
+            // Retrieve task data from localStorage
+            const storedTask = localStorage.getItem('currentTaskForAI');
+            let taskData = null;
+            if (storedTask) {
+                taskData = JSON.parse(storedTask);
+                // Clear the stored task after retrieving it
+                localStorage.removeItem('currentTaskForAI');
+            }
+
+            // Show loader initially
+            loader.style.display = 'block';
+            webhookResponseDisplay.style.display = 'none';
+
+            // Send task data to server if available
+            if (taskData) {
+                fetch('/api/ai-task', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(taskData),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Task data sent from task.html, server response:', data);
+                    // No need to display here, SSE will handle the final response
+                })
+                .catch(error => {
+                    console.error('Error sending task data from task.html:', error);
+                    webhookResponseDisplay.textContent = 'Error sending task data to AI: ' + error.message;
+                    loader.style.display = 'none';
+                    webhookResponseDisplay.style.display = 'block';
+                });
+            } else {
+                webhookResponseDisplay.textContent = 'No task data found to send.';
+                loader.style.display = 'none';
+                webhookResponseDisplay.style.display = 'block';
+            }
+
+
             // Server-Sent Events (SSE)
             const eventSource = new EventSource('/events');
 
             eventSource.onmessage = function(event) {
                 const data = JSON.parse(event.data);
-                console.log('Received SSE message in task.html:', data); // Log the full data object
+                console.log('Received SSE message in task.html:', data);
 
                 // Check if the received data has a task ID and if it matches the current page's task ID
-                // Assuming the task ID might be nested under 'originalTask' or similar, based on common webhook patterns
-                // We will refine this after inspecting the console log.
-                if (data.id && data.id === taskId) {
+                if (data.id && String(data.id) === taskId) {
                     webhookResponseDisplay.textContent = JSON.stringify(data, null, 2); // Display formatted JSON
-                } else if (data.originalTask && data.originalTask.id && data.originalTask.id === taskId) {
+                    loader.style.display = 'none'; // Hide loader
+                    webhookResponseDisplay.style.display = 'block'; // Show response
+                } else if (data.originalTask && data.originalTask.id && String(data.originalTask.id) === taskId) {
                     webhookResponseDisplay.textContent = JSON.stringify(data, null, 2); // Display formatted JSON
+                    loader.style.display = 'none'; // Hide loader
+                    webhookResponseDisplay.style.display = 'block'; // Show response
                 }
             };
 
             eventSource.onerror = function(err) {
                 console.error('EventSource failed:', err);
                 eventSource.close();
+                webhookResponseDisplay.textContent = 'Error connecting to webhook events.';
+                loader.style.display = 'none';
+                webhookResponseDisplay.style.display = 'block';
             };
         });
     </script>

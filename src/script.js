@@ -6,52 +6,112 @@ document.addEventListener('DOMContentLoaded', () => {
     const popupMessage = document.getElementById('popupMessage');
     const closePopupBtn = document.querySelector('.popup .close-btn');
 
-    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-
-    function saveTasks() {
-        localStorage.setItem('tasks', JSON.stringify(tasks));
+    // Function to fetch tasks from the server
+    async function fetchTasks() {
+        try {
+            const response = await fetch('/api/tasks');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error fetching tasks:', error);
+            return [];
+        }
     }
 
-    function renderTasks() {
+    // Function to render tasks
+    async function renderTasks() {
+        const tasks = await fetchTasks();
         taskList.innerHTML = '';
-        tasks.forEach((task, index) => {
+        tasks.forEach((task) => {
             const listItem = document.createElement('li');
             listItem.className = task.completed ? 'completed' : '';
             listItem.innerHTML = `
                 <span>${task.text}</span>
                 <pre>${task.id}</pre>
                 <div class="task-actions">
-                    <button class="ai-btn" data-index="${index}">AI</button>
-
-                    <button class="complete-btn" data-index="${index}">${task.completed ? 'Undo' : 'Complete'}</button>
-                    <button class="delete-btn" data-index="${index}">Delete</button>
+                    <button class="ai-btn" data-id="${task.id}">AI</button>
+                    <button class="complete-btn" data-id="${task.id}">${task.completed ? 'Undo' : 'Complete'}</button>
+                    <button class="delete-btn" data-id="${task.id}">Delete</button>
                 </div>
             `;
             taskList.appendChild(listItem);
         });
     }
 
-    function addTask() {
+    // Function to add a task
+    async function addTask() {
         const taskText = taskInput.value.trim();
         if (taskText !== '') {
-            const taskId = Date.now().toString(); // Generate a unique ID
-            tasks.push({ id: taskId, text: taskText, completed: false });
-            taskInput.value = '';
-            saveTasks();
-            renderTasks();
+            const newTask = {
+                id: Date.now().toString(), // Generate a unique ID
+                text: taskText,
+                completed: false
+            };
+
+            try {
+                const response = await fetch('/api/tasks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(newTask),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                taskInput.value = '';
+                renderTasks(); // Re-render tasks after adding
+            } catch (error) {
+                console.error('Error adding task:', error);
+            }
         }
     }
 
-    function toggleComplete(index) {
-        tasks[index].completed = !tasks[index].completed;
-        saveTasks();
-        renderTasks();
+    // Function to toggle task completion
+    async function toggleComplete(taskId) {
+        try {
+            const tasks = await fetchTasks();
+            const taskToUpdate = tasks.find(task => task.id === taskId);
+
+            if (taskToUpdate) {
+                const updatedTask = { ...taskToUpdate, completed: !taskToUpdate.completed };
+                const response = await fetch(`/api/tasks/${taskId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updatedTask),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                renderTasks(); // Re-render tasks after updating
+            }
+        } catch (error) {
+            console.error('Error toggling task completion:', error);
+        }
     }
 
-    function deleteTask(index) {
-        tasks.splice(index, 1);
-        saveTasks();
-        renderTasks();
+    // Function to delete a task
+    async function deleteTask(taskId) {
+        try {
+            const response = await fetch(`/api/tasks/${taskId}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            renderTasks(); // Re-render tasks after deleting
+        } catch (error) {
+            console.error('Error deleting task:', error);
+        }
     }
 
     addTaskBtn.addEventListener('click', addTask);
@@ -62,34 +122,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    taskList.addEventListener('click', (e) => {
+    taskList.addEventListener('click', async (e) => {
         if (e.target.classList.contains('complete-btn')) {
-            const index = e.target.dataset.index;
-            toggleComplete(index);
+            const taskId = e.target.dataset.id;
+            await toggleComplete(taskId);
         } else if (e.target.classList.contains('delete-btn')) {
-            const index = e.target.dataset.index;
-            deleteTask(index);
+            const taskId = e.target.dataset.id;
+            await deleteTask(taskId);
         } else if (e.target.classList.contains('ai-btn')) {
-            const index = e.target.dataset.index;
-            const task = tasks[index]; // Get the task object
+            const taskId = e.target.dataset.id;
+            const tasks = await fetchTasks(); // Fetch tasks to get the specific task object
+            const task = tasks.find(t => t.id === taskId);
 
-            fetch('/api/ai-task', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(task),
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Server response:', data);
-                alert('Task data sent to AI!'); // Provide user feedback
+            if (task) {
+                localStorage.setItem('currentTaskForAI', JSON.stringify(task)); // Store the task data
                 window.location.href = `/task.html?id=${task.id}`; // Navigate to new page
-            })
-            .catch(error => {
-                console.error('Error sending task data:', error);
-                alert('Failed to send task data to AI.'); // Provide user feedback
-            });
+            }
         }
     });
 

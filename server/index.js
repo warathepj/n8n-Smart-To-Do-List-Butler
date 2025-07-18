@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs').promises; // Import fs.promises for async file operations
 const NodeFetch = require('node-fetch'); // Import node-fetch
 
 const app = express();
@@ -17,6 +18,96 @@ app.use(express.static(path.join(__dirname, '../src')));
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../src', 'index.html'));
 });
+
+// Helper function to read tasks from data.json
+async function readTasks() {
+    try {
+        const data = await fs.readFile(path.join(__dirname, 'data.json'), 'utf8');
+        // If data is empty, return an empty array to prevent JSON.parse error
+        if (data.trim() === '') {
+            return [];
+        }
+        return JSON.parse(data);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            // If file doesn't exist, return empty array
+            return [];
+        }
+        throw error;
+    }
+}
+
+// Helper function to write tasks to data.json
+async function writeTasks(tasks) {
+    await fs.writeFile(path.join(__dirname, 'data.json'), JSON.stringify(tasks, null, 2), 'utf8');
+}
+
+// API endpoint to get all tasks
+app.get('/api/tasks', async (req, res) => {
+    try {
+        const tasks = await readTasks();
+        res.status(200).json(tasks);
+    } catch (error) {
+        console.error('Error reading tasks:', error);
+        res.status(500).json({ message: 'Error retrieving tasks.', error: error.message });
+    }
+});
+
+// API endpoint to add a new task
+app.post('/api/tasks', async (req, res) => {
+    const newTask = req.body;
+    try {
+        const tasks = await readTasks();
+        tasks.push(newTask);
+        await writeTasks(tasks);
+        res.status(201).json({ message: 'Task added successfully!', task: newTask });
+    } catch (error) {
+        console.error('Error adding task:', error);
+        res.status(500).json({ message: 'Error adding task.', error: error.message });
+    }
+});
+
+// API endpoint to update a task
+app.put('/api/tasks/:id', async (req, res) => {
+    const taskId = req.params.id;
+    const updatedTaskData = req.body;
+    try {
+        let tasks = await readTasks();
+        const taskIndex = tasks.findIndex(task => task.id === taskId);
+
+        if (taskIndex > -1) {
+            tasks[taskIndex] = { ...tasks[taskIndex], ...updatedTaskData };
+            await writeTasks(tasks);
+            res.status(200).json({ message: 'Task updated successfully!', task: tasks[taskIndex] });
+        } else {
+            res.status(404).json({ message: 'Task not found.' });
+        }
+    } catch (error) {
+        console.error('Error updating task:', error);
+        res.status(500).json({ message: 'Error updating task.', error: error.message });
+    }
+});
+
+// API endpoint to delete a task
+app.delete('/api/tasks/:id', async (req, res) => {
+    const taskId = req.params.id;
+    try {
+        let tasks = await readTasks();
+        const initialLength = tasks.length;
+        tasks = tasks.filter(task => task.id !== taskId);
+
+        if (tasks.length < initialLength) {
+            await writeTasks(tasks);
+            res.status(200).json({ message: 'Task deleted successfully!' });
+        } else {
+            res.status(404).json({ message: 'Task not found.' });
+        }
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        res.status(500).json({ message: 'Error deleting task.', error: error.message });
+    }
+});
+
 
 // New endpoint to receive AI task data
 app.post('/api/ai-task', async (req, res) => {
