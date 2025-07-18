@@ -141,14 +141,47 @@ app.post('/api/ai-task', async (req, res) => {
 });
 
 // New endpoint to receive webhook responses
-app.post('/api/webhook-response', (req, res) => {
+app.post('/api/webhook-response', async (req, res) => {
     const webhookResponseData = req.body;
     console.log('Received webhook response data:', webhookResponseData);
 
-    // Send webhook response to all connected SSE clients
-    clients.forEach(client => client.write(`data: ${JSON.stringify(webhookResponseData)}\n\n`));
+    try {
+        // Extract the JSON string from the 'output' field and remove markdown formatting
+        let rawJsonString = webhookResponseData.output;
+        if (rawJsonString && typeof rawJsonString === 'string') {
+            rawJsonString = rawJsonString.replace(/```json\n|```/g, '').trim();
+        } else {
+            throw new Error('Webhook response output is not a valid string.');
+        }
 
-    res.status(200).json({ message: 'Webhook response received successfully!' });
+        const parsedWebhookData = JSON.parse(rawJsonString);
+        const taskId = parsedWebhookData.id; // Get ID from the parsed data
+        const responseContent = parsedWebhookData.response; // Get response content
+
+        let tasks = await readTasks();
+        const taskIndex = tasks.findIndex(task => task.id === taskId);
+
+        if (taskIndex > -1) {
+            // Merge the new data into the existing task, preserving existing fields
+            // Only update 'response' field if it exists in parsedWebhookData
+            tasks[taskIndex] = {
+                ...tasks[taskIndex],
+                ...parsedWebhookData, // This will merge all fields from parsedWebhookData
+                // If you only want to add 'response' and 'id' from parsedWebhookData,
+                // you could be more specific:
+                // id: taskId,
+                // response: responseContent
+            };
+            await writeTasks(tasks);
+            res.status(200).json({ message: 'Webhook response received and task updated successfully!', task: tasks[taskIndex] });
+        } else {
+            console.warn(`Task with ID ${taskId} not found for webhook update.`);
+            res.status(404).json({ message: 'Task not found for update based on webhook response.' });
+        }
+    } catch (error) {
+        console.error('Error processing webhook response:', error);
+        res.status(500).json({ message: 'Error processing webhook response.', error: error.message });
+    }
 });
 
 // New endpoint for Server-Sent Events
