@@ -128,6 +128,9 @@ app.post('/api/ai-task', async (req, res) => {
         if (response.ok) {
             const responseData = await response.json(); // Assuming the webhook response is JSON
             console.log('Task data forwarded to webhook successfully! Webhook response:', responseData);
+            // Save responseData to server/agent-response.json
+            await fs.writeFile(path.join(__dirname, 'agent-response.json'), JSON.stringify(responseData, null, 2), 'utf8');
+            console.log('Webhook response data saved to agent-response.json');
             res.status(200).json({ message: 'Task data received and forwarded successfully!', webhookResponse: responseData });
         } else {
             const errorText = await response.text();
