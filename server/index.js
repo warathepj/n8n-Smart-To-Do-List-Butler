@@ -158,22 +158,26 @@ app.post('/api/webhook-response', async (req, res) => {
         }
 
         const parsedWebhookData = JSON.parse(rawJsonString);
-        const taskId = parsedWebhookData.id; // Get ID from the parsed data
-        const responseContent = parsedWebhookData.response; // Get response content
+        // Transform 'id' and 'response' into objects
+        const taskId = { value: parsedWebhookData.id };
+        const responseContent = { content: parsedWebhookData.response };
+
+        // Create a new object with the transformed fields,
+        // preserving other fields from parsedWebhookData if any
+        const transformedWebhookData = {
+            ...parsedWebhookData,
+            id: taskId,
+            response: responseContent
+        };
 
         let tasks = await readTasks();
-        const taskIndex = tasks.findIndex(task => task.id === taskId);
+        const taskIndex = tasks.findIndex(task => task.id === taskId.value); // Use taskId.value for comparison
 
         if (taskIndex > -1) {
             // Merge the new data into the existing task, preserving existing fields
-            // Only update 'response' field if it exists in parsedWebhookData
             tasks[taskIndex] = {
                 ...tasks[taskIndex],
-                ...parsedWebhookData, // This will merge all fields from parsedWebhookData
-                // If you only want to add 'response' and 'id' from parsedWebhookData,
-                // you could be more specific:
-                // id: taskId,
-                // response: responseContent
+                ...transformedWebhookData, // Use the transformed data here
             };
             await writeTasks(tasks);
             res.status(200).json({ message: 'Webhook response received and task updated successfully!', task: tasks[taskIndex] });
