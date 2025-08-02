@@ -10,8 +10,12 @@
     <div class="container">
         <h1>Task Details</h1>
         <p>Task ID: <span id="taskIdDisplay"></span></p>
+        <h2>Task Description:</h2>
+        <div id="taskDescriptionLoader" class="loader"></div>
+        <pre id="taskDescriptionDisplay" style="display: none; white-space: pre-wrap; word-wrap: break-word;"></pre>
+
         <h2>Agent Response:</h2>
-        <div id="loader" class="loader"></div>
+        <div id="agentResponseLoader" class="loader"></div>
         <pre id="agentResponseDisplay" style="display: none; white-space: pre-wrap; word-wrap: break-word;"></pre>
         <a href="index.html" class="back-button">Back to To-Do List</a>
     </div>
@@ -21,31 +25,57 @@
             const urlParams = new URLSearchParams(window.location.search);
             const taskId = urlParams.get('id');
             const taskIdDisplay = document.getElementById('taskIdDisplay');
+            const taskDescriptionDisplay = document.getElementById('taskDescriptionDisplay');
             const agentResponseDisplay = document.getElementById('agentResponseDisplay');
-            const loader = document.getElementById('loader');
+            const taskDescriptionLoader = document.getElementById('taskDescriptionLoader');
+            const agentResponseLoader = document.getElementById('agentResponseLoader');
 
             if (taskId) {
                 taskIdDisplay.textContent = taskId;
             } else {
                 taskIdDisplay.textContent = 'No Task ID found.';
-                loader.style.display = 'none';
+                taskDescriptionLoader.style.display = 'none';
+                agentResponseLoader.style.display = 'none';
                 return;
             }
 
-            loader.style.display = 'block';
+            taskDescriptionLoader.style.display = 'block';
+            agentResponseLoader.style.display = 'block';
+            taskDescriptionDisplay.style.display = 'none';
             agentResponseDisplay.style.display = 'none';
 
             try {
-                // Fetch the agent response from the server
-                const response = await fetch('/api/agent-response');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                // Fetch the task details from the server
+                const taskResponse = await fetch(`/api/task-details/${taskId}`);
+                if (!taskResponse.ok) {
+                    throw new Error(`HTTP error! status: ${taskResponse.status}`);
                 }
-                const agentResponse = await response.json();
+                const taskData = await taskResponse.json();
+
+                if (taskData && taskData.text) {
+                    taskDescriptionDisplay.textContent = taskData.text;
+                } else {
+                    taskDescriptionDisplay.textContent = 'Task description not found.';
+                }
+            } catch (error) {
+                console.error('Error fetching or processing task details:', error);
+                taskDescriptionDisplay.textContent = 'Failed to load task description.';
+            } finally {
+                taskDescriptionLoader.style.display = 'none';
+                taskDescriptionDisplay.style.display = 'block';
+            }
+
+            try {
+                // Fetch the agent response from the server
+                const agentResponse = await fetch('/api/agent-response');
+                if (!agentResponse.ok) {
+                    throw new Error(`HTTP error! status: ${agentResponse.status}`);
+                }
+                const agentData = await agentResponse.json();
 
                 // Check if the fetched response ID matches the current task ID
-                if (agentResponse && agentResponse.id === taskId) {
-                    agentResponseDisplay.textContent = agentResponse.response;
+                if (agentData && agentData.id === taskId) {
+                    agentResponseDisplay.textContent = agentData.response;
                 } else {
                     agentResponseDisplay.textContent = 'Agent response not found for this task.';
                 }
@@ -53,7 +83,7 @@
                 console.error('Error fetching or processing agent response:', error);
                 agentResponseDisplay.textContent = 'Failed to load agent response.';
             } finally {
-                loader.style.display = 'none';
+                agentResponseLoader.style.display = 'none';
                 agentResponseDisplay.style.display = 'block';
             }
         });

@@ -228,6 +228,23 @@ app.get('/api/agent-response', async (req, res) => {
     }
 });
 
+// New endpoint to get task text by ID from data.json
+app.get('/api/task-details/:id', async (req, res) => {
+    const taskId = req.params.id;
+    try {
+        const tasks = await readTasks();
+        const task = tasks.find(t => t.id === taskId);
+        if (task) {
+            res.status(200).json({ text: task.text });
+        } else {
+            res.status(404).json({ message: 'Task not found.' });
+        }
+    } catch (error) {
+        console.error('Error reading task details:', error);
+        res.status(500).json({ message: 'Error retrieving task details.', error: error.message });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server listening at http://localhost:${port}`);
 });
