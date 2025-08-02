@@ -114,7 +114,7 @@ app.post('/api/ai-task', async (req, res) => {
     const taskData = req.body;
     console.log('Received AI task data:', taskData);
 
-    const webhookUrl = 'http://localhost:5678/webhook-test/9c98d78c-7d72-4787-85b7-3912ca366e4e';
+    const webhookUrl = 'http://localhost:5678/webhook/9c98d78c-7d72-4787-85b7-3912ca366e4e';
 
     try {
         const response = await NodeFetch(webhookUrl, {
@@ -206,6 +206,20 @@ app.get('/events', (req, res) => {
     });
 
     console.log('New client connected to SSE.');
+});
+
+// New endpoint to get agent response data
+app.get('/api/agent-response', async (req, res) => {
+    try {
+        const data = await fs.readFile(path.join(__dirname, 'agent-response.json'), 'utf8');
+        res.status(200).json(JSON.parse(data));
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            return res.status(404).json({ message: 'agent-response.json not found.' });
+        }
+        console.error('Error reading agent-response.json:', error);
+        res.status(500).json({ message: 'Error retrieving agent response.', error: error.message });
+    }
 });
 
 app.listen(port, () => {

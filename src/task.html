@@ -55,6 +55,7 @@
         <h2>Webhook Response:</h2>
         <div id="loader" class="loader"></div>
         <pre id="webhookResponseDisplay" style="display: none;"></pre>
+        <div id="agentResponseContent" style="margin-top: 20px; word-wrap: break-word;"></div>
         <a href="index.html" class="back-button">Back to To-Do List</a>
     </div>
 
@@ -82,6 +83,7 @@
             const taskIdDisplay = document.getElementById('taskIdDisplay');
             const webhookResponseDisplay = document.getElementById('webhookResponseDisplay');
             const loader = document.getElementById('loader');
+            const agentResponseContent = document.getElementById('agentResponseContent'); // Get the new element
 
             if (taskId) {
                 taskIdDisplay.textContent = taskId;
@@ -132,19 +134,44 @@
             // Server-Sent Events (SSE)
             const eventSource = new EventSource('/events');
 
-            eventSource.onmessage = function(event) {
+            // Function to fetch agent response
+            async function fetchAgentResponse() {
+                try {
+                    const response = await fetch('/api/agent-response');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('Error fetching agent response:', error);
+                    return null;
+                }
+            }
+
+            eventSource.onmessage = async function(event) {
                 const data = JSON.parse(event.data);
                 console.log('Received SSE message in task.html:', data);
 
                 // Check if the received data has a task ID and if it matches the current page's task ID
-                if (data.id && String(data.id) === taskId) {
+                if ((data.id && String(data.id) === taskId) || (data.originalTask && data.originalTask.id && String(data.originalTask.id) === taskId)) {
                     webhookResponseDisplay.textContent = JSON.stringify(data, null, 2); // Display formatted JSON
                     loader.style.display = 'none'; // Hide loader
                     webhookResponseDisplay.style.display = 'block'; // Show response
-                } else if (data.originalTask && data.originalTask.id && String(data.originalTask.id) === taskId) {
-                    webhookResponseDisplay.textContent = JSON.stringify(data, null, 2); // Display formatted JSON
-                    loader.style.display = 'none'; // Hide loader
-                    webhookResponseDisplay.style.display = 'block'; // Show response
+
+                    // Fetch and display agent response
+                    const agentResponse = await fetchAgentResponse();
+                    if (agentResponse && agentResponse.output) {
+                        try {
+                            const parsedOutput = JSON.parse(agentResponse.output.replace(/```json\n|```/g, '').trim());
+                            agentResponseContent.textContent = `Agent Response: ${parsedOutput.response}`;
+                        } catch (e) {
+                            console.error('Error parsing agent response output:', e);
+                            agentResponseContent.textContent = 'Agent Response: Error parsing data.';
+                        }
+                    } else {
+                        agentResponseContent.textContent = 'Agent Response: No data available.';
+                    }
                 }
             };
 

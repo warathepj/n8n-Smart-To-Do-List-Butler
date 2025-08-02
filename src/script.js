@@ -5,6 +5,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const webhookResponsePopup = document.getElementById('webhookResponsePopup');
     const popupMessage = document.getElementById('popupMessage');
     const closePopupBtn = document.querySelector('.popup .close-btn');
+    const agentResponseDisplay = document.getElementById('agentResponseDisplay'); // New element
+    const loadingSpinner = document.getElementById('loadingSpinner'); // Get loading spinner element
+
+    // Function to show loading spinner
+    function showLoadingSpinner() {
+        loadingSpinner.style.display = 'flex';
+    }
+
+    // Function to hide loading spinner
+    function hideLoadingSpinner() {
+        loadingSpinner.style.display = 'none';
+    }
 
     // Function to fetch tasks from the server
     async function fetchTasks() {
@@ -18,6 +30,21 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error fetching tasks:', error);
             return [];
+        }
+    }
+
+    // Function to fetch agent response
+    async function fetchAgentResponse() {
+        try {
+            const response = await fetch('/api/agent-response');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error fetching agent response:', error);
+            return null;
         }
     }
 
@@ -136,7 +163,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (task) {
                 localStorage.setItem('currentTaskForAI', JSON.stringify(task)); // Store the task data
-                window.location.href = `/task.html?id=${task.id}`; // Navigate to new page
+
+                showLoadingSpinner(); // Show spinner before sending data
+
+                try {
+                    const response = await fetch('/api/ai-task', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(task),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    console.log('AI task data sent successfully!');
+                } catch (error) {
+                    console.error('Error sending AI task data:', error);
+                    hideLoadingSpinner(); // Hide spinner on error
+                }
             }
         }
     });
@@ -146,11 +192,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // Server-Sent Events (SSE)
     const eventSource = new EventSource('/events');
 
-    eventSource.onmessage = function(event) {
+    eventSource.onmessage = async function(event) {
         const data = JSON.parse(event.data);
         console.log('Received SSE message:', data);
         popupMessage.textContent = JSON.stringify(data, null, 2); // Display formatted JSON
         webhookResponsePopup.style.display = 'flex'; // Show the popup
+        hideLoadingSpinner(); // Hide spinner when SSE message is received
+
+        // Fetch and display agent response
+        const agentResponse = await fetchAgentResponse();
+        if (agentResponse && agentResponse.output) {
+            try {
+                const parsedOutput = JSON.parse(agentResponse.output.replace(/```json\n|```/g, '').trim());
+                agentResponseDisplay.textContent = `Agent Response: ${parsedOutput.response}`;
+                // Navigate to task.html with the ID from the agent response
+                if (parsedOutput.id) {
+                    window.location.href = `/task.html?id=${parsedOutput.id}`;
+                }
+            } catch (e) {
+                console.error('Error parsing agent response output:', e);
+                agentResponseDisplay.textContent = 'Agent Response: Error parsing data.';
+            }
+        } else {
+            agentResponseDisplay.textContent = 'Agent Response: No data available.';
+        }
 
         // Automatically hide the popup after 5 seconds
         setTimeout(() => {
@@ -161,6 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
     eventSource.onerror = function(err) {
         console.error('EventSource failed:', err);
         eventSource.close();
+        hideLoadingSpinner(); // Hide spinner on SSE error
     };
 
     // Close popup when close button is clicked
