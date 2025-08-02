@@ -10,6 +10,7 @@ const port = 3000;
 let clients = [];
 
 app.use(express.json()); // Middleware to parse JSON bodies
+app.use(express.urlencoded({ extended: true })); // Middleware for url-encoded bodies
 
 // Serve static files from the 'src' directory
 app.use(express.static(path.join(__dirname, '../src')));
@@ -111,7 +112,7 @@ app.delete('/api/tasks/:id', async (req, res) => {
 
 // New endpoint to receive AI task data
 app.post('/api/ai-task', async (req, res) => {
-    const taskData = req.body;
+    const taskData = JSON.parse(req.body.task);
     console.log('Received AI task data:', taskData);
 
     const webhookUrl = 'http://localhost:5678/webhook/9c98d78c-7d72-4787-85b7-3912ca366e4e';
@@ -131,6 +132,11 @@ app.post('/api/ai-task', async (req, res) => {
             // Save responseData to server/agent-response.json
             await fs.writeFile(path.join(__dirname, 'agent-response.json'), JSON.stringify(responseData, null, 2), 'utf8');
             console.log('Webhook response data saved to agent-response.json');
+
+            if (responseData.id) {
+                return res.redirect(`/task.html?id=${responseData.id}`);
+            }
+
             res.status(200).json({ message: 'Task data received and forwarded successfully!', webhookResponse: responseData });
         } else {
             const errorText = await response.text();
