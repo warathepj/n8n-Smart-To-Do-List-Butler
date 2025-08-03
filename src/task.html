@@ -71,11 +71,13 @@
                 if (!agentResponse.ok) {
                     throw new Error(`HTTP error! status: ${agentResponse.status}`);
                 }
-                const agentData = await agentResponse.json();
+                const agentResponses = await agentResponse.json();
 
-                // Check if the fetched response ID matches the current task ID
-                if (agentData && agentData.id === taskId) {
-                    agentResponseDisplay.textContent = agentData.response;
+                // Find the agent response that matches the current task ID
+                const matchingAgentResponse = agentResponses.find(response => response.id === taskId);
+
+                if (matchingAgentResponse && matchingAgentResponse.response) {
+                    agentResponseDisplay.textContent = matchingAgentResponse.response;
                 } else {
                     agentResponseDisplay.textContent = 'Agent response not found for this task.';
                 }

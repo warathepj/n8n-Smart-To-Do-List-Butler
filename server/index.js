@@ -109,6 +109,28 @@ app.delete('/api/tasks/:id', async (req, res) => {
     }
 });
 
+// Helper function to read agent responses from agent-response.json
+async function readAgentResponses() {
+    try {
+        const data = await fs.readFile(path.join(__dirname, 'agent-response.json'), 'utf8');
+        if (data.trim() === '') {
+            return [];
+        }
+        const parsedData = JSON.parse(data);
+        // Ensure the parsed data is always an array
+        return Array.isArray(parsedData) ? parsedData : [parsedData];
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            return [];
+        }
+        throw error;
+    }
+}
+
+// Helper function to write agent responses to agent-response.json
+async function writeAgentResponses(responses) {
+    await fs.writeFile(path.join(__dirname, 'agent-response.json'), JSON.stringify(responses, null, 2), 'utf8');
+}
 
 // New endpoint to receive AI task data
 app.post('/api/ai-task', async (req, res) => {
@@ -129,9 +151,20 @@ app.post('/api/ai-task', async (req, res) => {
         if (response.ok) {
             const responseData = await response.json(); // Assuming the webhook response is JSON
             console.log('Task data forwarded to webhook successfully! Webhook response:', responseData);
-            // Save responseData to server/agent-response.json
-            await fs.writeFile(path.join(__dirname, 'agent-response.json'), JSON.stringify(responseData, null, 2), 'utf8');
-            console.log('Webhook response data saved to agent-response.json');
+
+            // Save responseData to server/agent-response.json, handling existing IDs
+            let agentResponses = await readAgentResponses();
+            const existingResponseIndex = agentResponses.findIndex(r => r.id === responseData.id);
+
+            if (existingResponseIndex > -1) {
+                // Update existing response
+                agentResponses[existingResponseIndex] = { ...agentResponses[existingResponseIndex], ...responseData };
+            } else {
+                // Add new response
+                agentResponses.push(responseData);
+            }
+            await writeAgentResponses(agentResponses);
+            console.log('Webhook response data saved/updated in agent-response.json');
 
             if (responseData.id) {
                 return res.redirect(`/task.html?id=${responseData.id}`);
@@ -217,12 +250,9 @@ app.get('/events', (req, res) => {
 // New endpoint to get agent response data
 app.get('/api/agent-response', async (req, res) => {
     try {
-        const data = await fs.readFile(path.join(__dirname, 'agent-response.json'), 'utf8');
-        res.status(200).json(JSON.parse(data));
+        const responses = await readAgentResponses();
+        res.status(200).json(responses);
     } catch (error) {
-        if (error.code === 'ENOENT') {
-            return res.status(404).json({ message: 'agent-response.json not found.' });
-        }
         console.error('Error reading agent-response.json:', error);
         res.status(500).json({ message: 'Error retrieving agent response.', error: error.message });
     }

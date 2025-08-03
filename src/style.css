@@ -123,11 +123,12 @@ h1 {
 }
 
 .task-actions button.ai-btn {
-    background-color: #6f42c1; /* Purple color for AI button */
+    background: linear-gradient(to right, #8a2be2, #ffd700); /* Gradient purple to yellow */
+    color: white;
 }
 
 .task-actions button.ai-btn:hover {
-    background-color: #5a2d9e;
+    opacity: 0.9;
 }
 
 /* Popup styles */
