@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="ai-btn" data-id="${task.id}">AI</button>
                     <button class="complete-btn" data-id="${task.id}">${task.completed ? 'Undo' : 'Complete'}</button>
                     <button class="delete-btn" data-id="${task.id}">Delete</button>
+                    <button class="detail-btn" data-id="${task.id}">Detail</button>
                 </div>
             `;
             taskList.appendChild(listItem);
@@ -142,6 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.body.appendChild(form);
                 form.submit();
             }
+        } else if (e.target.classList.contains('detail-btn')) {
+            const taskId = e.target.dataset.id;
+            window.location.href = `task.html?id=${taskId}`;
         }
     });
 
