@@ -72,9 +72,24 @@ h1 {
     word-break: break-word; /* Ensure long words break */
 }
 
+#taskList li.completed {
+    position: relative; /* Needed for absolute positioning of the line */
+}
+
 #taskList li.completed span {
     text-decoration: line-through;
     color: #888;
+}
+
+#taskList li.completed::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%; /* Center the line vertically */
+    height: 2px; /* Thickness of the line */
+    background-color: #888; /* Color of the line */
+    transform: translateY(-50%); /* Adjust for vertical centering */
 }
 
 #taskList li span {

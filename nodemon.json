@@ -1,0 +1,5 @@
+{
+  "ignore": [
+    "server/agent-response.json"
+  ]
+}

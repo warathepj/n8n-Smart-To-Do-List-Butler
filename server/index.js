@@ -134,12 +134,14 @@ async function writeAgentResponses(responses) {
 
 // New endpoint to receive AI task data
 app.post('/api/ai-task', async (req, res) => {
+    console.log('[/api/ai-task] Endpoint hit.');
     const taskData = JSON.parse(req.body.task);
-    console.log('Received AI task data:', taskData);
+    console.log('[/api/ai-task] Received AI task data:', taskData);
 
     const webhookUrl = 'http://localhost:5678/webhook/9c98d78c-7d72-4787-85b7-3912ca366e4e';
 
     try {
+        console.log('[/api/ai-task] Attempting to forward task data to webhook:', webhookUrl);
         const response = await NodeFetch(webhookUrl, {
             method: 'POST',
             headers: {
@@ -147,37 +149,42 @@ app.post('/api/ai-task', async (req, res) => {
             },
             body: JSON.stringify(taskData),
         });
+        console.log('[/api/ai-task] Webhook response received. Status:', response.status);
 
         if (response.ok) {
             const responseData = await response.json(); // Assuming the webhook response is JSON
             console.log('Task data forwarded to webhook successfully! Webhook response:', responseData);
 
             // Save responseData to server/agent-response.json, handling existing IDs
+            console.log('[/api/ai-task] Reading existing agent responses.');
             let agentResponses = await readAgentResponses();
             const existingResponseIndex = agentResponses.findIndex(r => r.id === responseData.id);
 
             if (existingResponseIndex > -1) {
                 // Update existing response
                 agentResponses[existingResponseIndex] = { ...agentResponses[existingResponseIndex], ...responseData };
+                console.log('[/api/ai-task] Updating existing agent response for ID:', responseData.id);
             } else {
                 // Add new response
                 agentResponses.push(responseData);
+                console.log('[/api/ai-task] Adding new agent response for ID:', responseData.id);
             }
             await writeAgentResponses(agentResponses);
-            console.log('Webhook response data saved/updated in agent-response.json');
+            console.log('[/api/ai-task] Webhook response data saved/updated in agent-response.json');
 
             if (responseData.id) {
+                console.log('[/api/ai-task] Redirecting to /task.html with ID:', responseData.id);
                 return res.redirect(`/task.html?id=${responseData.id}`);
             }
 
             res.status(200).json({ message: 'Task data received and forwarded successfully!', webhookResponse: responseData });
         } else {
             const errorText = await response.text();
-            console.error('Failed to forward task data to webhook:', response.status, errorText);
+            console.error('[/api/ai-task] Failed to forward task data to webhook. Status:', response.status, 'Error:', errorText);
             res.status(500).json({ message: 'Failed to forward task data to webhook.', error: errorText });
         }
     } catch (error) {
-        console.error('Error forwarding task data to webhook:', error);
+        console.error('[/api/ai-task] Error forwarding task data to webhook:', error);
         res.status(500).json({ message: 'Error forwarding task data to webhook.', error: error.message });
     }
 });
