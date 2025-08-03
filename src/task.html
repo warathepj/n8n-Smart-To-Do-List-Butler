@@ -22,8 +22,10 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
+            console.log('DOMContentLoaded event fired.');
             const urlParams = new URLSearchParams(window.location.search);
             const taskId = urlParams.get('id');
+            console.log('Task ID from URL:', taskId);
             const taskIdDisplay = document.getElementById('taskIdDisplay');
             const taskDescriptionDisplay = document.getElementById('taskDescriptionDisplay');
             const agentResponseDisplay = document.getElementById('agentResponseDisplay');
@@ -36,6 +38,7 @@
                 taskIdDisplay.textContent = 'No Task ID found.';
                 taskDescriptionLoader.style.display = 'none';
                 agentResponseLoader.style.display = 'none';
+                console.log('No Task ID found, exiting script.');
                 return;
             }
 
@@ -45,12 +48,15 @@
             agentResponseDisplay.style.display = 'none';
 
             try {
+                console.log('Fetching task details for ID:', taskId);
                 // Fetch the task details from the server
                 const taskResponse = await fetch(`/api/task-details/${taskId}`);
+                console.log('Task details fetch response status:', taskResponse.status);
                 if (!taskResponse.ok) {
                     throw new Error(`HTTP error! status: ${taskResponse.status}`);
                 }
                 const taskData = await taskResponse.json();
+                console.log('Task details data:', taskData);
 
                 if (taskData && taskData.text) {
                     taskDescriptionDisplay.textContent = taskData.text;
@@ -63,15 +69,19 @@
             } finally {
                 taskDescriptionLoader.style.display = 'none';
                 taskDescriptionDisplay.style.display = 'block';
+                console.log('Task description loading finished.');
             }
 
             try {
+                console.log('Fetching agent response.');
                 // Fetch the agent response from the server
                 const agentResponse = await fetch('/api/agent-response');
+                console.log('Agent response fetch response status:', agentResponse.status);
                 if (!agentResponse.ok) {
                     throw new Error(`HTTP error! status: ${agentResponse.status}`);
                 }
                 const agentResponses = await agentResponse.json();
+                console.log('Agent responses data:', agentResponses);
 
                 // Find the agent response that matches the current task ID
                 const matchingAgentResponse = agentResponses.find(response => response.id === taskId);
@@ -87,6 +97,7 @@
             } finally {
                 agentResponseLoader.style.display = 'none';
                 agentResponseDisplay.style.display = 'block';
+                console.log('Agent response loading finished.');
             }
         });
     </script>
